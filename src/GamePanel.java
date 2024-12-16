@@ -9,7 +9,7 @@ public class GamePanel extends JPanel implements ActionListener {
     static final int SCREEN_HEIGHT = 600;
     static final int UNIT_SIZE = 25;
     static final int GAME_UNITS = (SCREEN_WIDTH * SCREEN_WIDTH) / UNIT_SIZE;
-    static final int DELAY = 75;
+    static final int DELAY = 250;
 
     final int x[] = new int[GAME_UNITS];
     final int y[] = new int[GAME_UNITS];
@@ -19,7 +19,8 @@ public class GamePanel extends JPanel implements ActionListener {
     int snakeParts = 6;
     int snakeParts2 = 6;
 
-    int applesEaten;
+    int applesEaten1;
+    int applesEaten2;
     int appleX;
     int appleY;
 
@@ -35,6 +36,7 @@ public class GamePanel extends JPanel implements ActionListener {
     boolean singleplayer;
     boolean end;
     boolean MM = true;
+    int loser;
 
     GamePanel() {
         random = new Random();
@@ -111,12 +113,12 @@ public class GamePanel extends JPanel implements ActionListener {
     public void checkApple() {
         if ((x[0] == appleX) && (y[0] == appleY)) {
             snakeParts++;
-            applesEaten++;
+            applesEaten1++;
             newApple();
         }
         if (!singleplayer && (x2[0] == appleX) && (y2[0] == appleY)) {
             snakeParts2++;
-            applesEaten++;
+            applesEaten2++;
             newApple();
         }
     }
@@ -131,20 +133,18 @@ public class GamePanel extends JPanel implements ActionListener {
     }
 
     public void initializeMultiplayer() {
-        // Initialize first snake in top left corner
         for (int i = 0; i < snakeParts; i++) {
             x[i] = UNIT_SIZE * (snakeParts - i);
             y[i] = 0;
         }
 
-        // Initialize second snake in bottom right corner
         for (int i = 0; i < snakeParts2; i++) {
             x2[i] = SCREEN_WIDTH - UNIT_SIZE * (snakeParts2 - i);
             y2[i] = SCREEN_HEIGHT - UNIT_SIZE;
         }
 
-        direction = 'R'; // First snake moves to the right
-        direction2 = 'L'; // Second snake moves to the left
+        direction = 'R';
+        direction2 = 'L'; 
     }
 
     public void paintComponent(Graphics g) {
@@ -154,13 +154,15 @@ public class GamePanel extends JPanel implements ActionListener {
 
     public void draw(Graphics g) {
         if (running) {
+            // Gitterlinien und Apfel zeichnen
             for (int i = 0; i < SCREEN_HEIGHT / UNIT_SIZE; i++) {
                 g.drawLine(i * UNIT_SIZE, 0, i * UNIT_SIZE, SCREEN_HEIGHT);
                 g.drawLine(0, i * UNIT_SIZE, SCREEN_WIDTH, i * UNIT_SIZE);
             }
             g.setColor(Color.red);
             g.fillOval(appleX, appleY, UNIT_SIZE, UNIT_SIZE);
-
+    
+            // Spieler 1 zeichnen
             for (int i = 0; i < snakeParts; i++) {
                 if (i == 0) {
                     g.setColor(Color.blue);
@@ -170,7 +172,8 @@ public class GamePanel extends JPanel implements ActionListener {
                     g.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
                 }
             }
-
+    
+            // Spieler 2 zeichnen (nur im Multiplayer-Modus)
             if (!singleplayer) {
                 for (int i = 0; i < snakeParts2; i++) {
                     if (i == 0) {
@@ -182,13 +185,19 @@ public class GamePanel extends JPanel implements ActionListener {
                     }
                 }
             }
-
-            g.setColor(Color.red);
+    
+            // Punkteanzeige für Spieler 1
+            g.setColor(Color.blue);
             g.setFont(new Font("Ink Free", Font.BOLD, 30));
-            FontMetrics metrics = getFontMetrics(g.getFont());
-            g.drawString("Apples Eaten: " + applesEaten,
-                    (SCREEN_WIDTH - metrics.stringWidth("Apples Eaten: " + applesEaten)) / 2,
-                    g.getFont().getSize());
+            g.drawString("Player 1 Score: " + applesEaten1, 20, g.getFont().getSize());
+    
+            // Punkteanzeige für Spieler 2 im Multiplayer
+            if (!singleplayer) {
+                g.setColor(Color.orange);
+                g.setFont(new Font("Ink Free", Font.BOLD, 30));
+                g.drawString("Player 2 Score: " + applesEaten2,
+                        SCREEN_WIDTH - 250, g.getFont().getSize());
+            }
         } else if (end) {
             gameOver(g);
         }
@@ -243,52 +252,97 @@ public class GamePanel extends JPanel implements ActionListener {
     }
 
     public void checkCollision() {
-        /*for (int i = snakeParts; i > 0; i--) {
+        // EIGENER BODY COLLISION
+        for (int i = snakeParts; i > 0; i--) {
             if ((x[0] == x[i]) && (y[0] == y[i])) {
                 running = false;
                 end = true;
+                loser = 1;
             }
         }
-
+    
+        // ZWEITER SPIELER EIGENER BODY COLLISIOn
         if (!singleplayer) {
             for (int i = snakeParts2; i > 0; i--) {
                 if ((x2[0] == x2[i]) && (y2[0] == y2[i])) {
                     running = false;
                     end = true;
+                    loser = 2;
+                }
+            }
+    
+            // PLAYER 1 HITS PLAYER 2 
+            for (int i = 0; i < snakeParts2; i++) {
+                if ((x[0] == x2[i]) && (y[0] == y2[i])) {
+                    running = false;
+                    end = true;
+                    loser = 1;
+                }
+            }
+    
+            // PLAYER 2 HITS PLAYER 1
+            for (int i = 0; i < snakeParts; i++) {
+                if ((x2[0] == x[i]) && (y2[0] == y[i])) {
+                    running = false;
+                    end = true;
+                    loser = 2;
                 }
             }
         }
-
-        if (x[0] < 0 || y[0] > SCREEN_HEIGHT || x[0] > SCREEN_WIDTH || y[0] < 0) {
+    
+        // PLAYER 1 WALL
+        if (x[0] < 0 || y[0] >= SCREEN_HEIGHT || x[0] >= SCREEN_WIDTH || y[0] < 0) {
             running = false;
             end = true;
+            loser = 1;
         }
-        if (!singleplayer && (x2[0] < 0 || y2[0] > SCREEN_HEIGHT || x2[0] > SCREEN_WIDTH || y2[0] < 0)) {
+    
+        // PLAYER 2 WALL
+        if (!singleplayer && (x2[0] < 0 || y2[0] >= SCREEN_HEIGHT || x2[0] >= SCREEN_WIDTH || y2[0] < 0)) {
             running = false;
             end = true;
+            loser =2;
         }
 
         if (!running) {
             timer.stop();
-        }*/
+        }
     }
+    
 
     public void gameOver(Graphics g) {
-        g.setColor(Color.red);
-        g.setFont(new Font("Ink Free", Font.BOLD, 30));
-        FontMetrics appleMetrics = getFontMetrics(g.getFont());
-        g.drawString("Apples Eaten: " + applesEaten,
-                (SCREEN_WIDTH - appleMetrics.stringWidth("Apples Eaten: " + applesEaten)) / 2,
-                g.getFont().getSize());
-
+        // GAME OVER Text
         g.setColor(Color.red);
         g.setFont(new Font("Ink Free", Font.BOLD, 100));
-        FontMetrics metrics = getFontMetrics(g.getFont());
         g.drawString("Game OVER",
-                (SCREEN_WIDTH - metrics.stringWidth("Game OVER")) / 2,
-                SCREEN_WIDTH / 2);
+                (SCREEN_WIDTH - g.getFontMetrics().stringWidth("Game OVER")) / 2,
+                SCREEN_HEIGHT / 2 - 100);
+    
+        // ENTER FOR NEW GAME Text
+        g.setColor(Color.white);
+        g.setFont(new Font("Ink Free", Font.BOLD, 50)); // Gleiche Schriftgröße wie "Game OVER"
+        g.drawString("ENTER FOR NEW GAME",
+                (SCREEN_WIDTH - g.getFontMetrics().stringWidth("ENTER FOR NEW GAME")) / 2,
+                SCREEN_HEIGHT / 2 + 100);
+    
+        // Gewinneranzeige
+        if (!singleplayer) {
+            g.setColor(Color.white);
+            g.setFont(new Font("Ink Free", Font.BOLD, 50));
+            g.drawString("PLAYER " + (loser == 1 ? "2" : "1") + " WON",
+                    (SCREEN_WIDTH - g.getFontMetrics().stringWidth("PLAYER " + (loser == 1 ? "2" : "1") + " WON")) / 2,
+                    SCREEN_HEIGHT / 2 - 200);
+        }
+    
+        // Punkteanzeige
+        g.setFont(new Font("Ink Free", Font.BOLD, 30));
+        g.drawString("Player 1 Score: " + applesEaten1, 20, g.getFont().getSize());
+        if (!singleplayer) {
+            g.drawString("Player 2 Score: " + applesEaten2,
+                    SCREEN_WIDTH - 250, g.getFont().getSize());
+        }
     }
-
+    
     public class KeyInputAdapter extends KeyAdapter {
         @Override
         public void keyPressed(KeyEvent e) {
@@ -338,30 +392,53 @@ public class GamePanel extends JPanel implements ActionListener {
                         }
                         break;
                     case KeyEvent.VK_A:
-                        if (direction2 != 'L') {
-                            direction2 = 'R';
+                        if (direction2 != 'R') {
+                            direction2 = 'L';
                         }
                         break;
                     case KeyEvent.VK_D:
-                        if (direction2 != 'R') {
-                            direction2 = 'L';
-                            System.out.println("D");
+                        if (direction2 != 'L') {
+                            direction2 = 'R';
                         }
                         break;
                     case KeyEvent.VK_W:
                         if (direction2 != 'D') {
                             direction2 = 'U';
-                            System.out.println("U");
                         }
                         break;
                     case KeyEvent.VK_S:
                         if (direction2 != 'U') {
                             direction2 = 'D';
-                            System.out.println("D");
                         }
                         break;
                 }
             }
+            if (e.getKeyCode() == KeyEvent.VK_ENTER && running == false) {
+                resetGame();
+            }
         }
+    }
+
+    public void resetGame() {
+        running = false;
+        end = false;
+        snakeParts = 6;
+        snakeParts2 = 6;
+    
+        applesEaten1 = 0;
+        applesEaten2 = 0;
+    
+        direction = 'R';
+        direction2 = 'L';
+    
+        for (int i = 0; i < snakeParts; i++) {
+            x[i] = UNIT_SIZE * (snakeParts - i);
+            y[i] = 0;
+        }
+        for (int i = 0; i < snakeParts2; i++) {
+            x2[i] = SCREEN_WIDTH - UNIT_SIZE * (snakeParts2 - i);
+            y2[i] = SCREEN_HEIGHT - UNIT_SIZE;
+        }
+        startGame();
     }
 }
